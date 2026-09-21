@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Weekly Schedule Planner</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📅</text></svg>">
+<style>
+:root {
+  --bg: #1a1a2e; --card: #16213e; --border: #2a3a5c; --text: #e0e0e0;
+  --muted: #8892a4; --accent: #4fc3f7; --green: #66bb6a; --orange: #ffa726;
+  --red: #ef5350;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #f0f0f0; --card: #fff; --border: #ddd; --text: #1a1a1a; --muted: #666;
+  }
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { height: 100%; scroll-padding-top: env(safe-area-inset-top, 0px); }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  background: var(--bg); color: var(--text);
+  padding: 12px; max-width: 650px; margin: 0 auto; font-size: 14px;
+  min-height: 100%;
+}
+h1 { font-size: 18px; text-align: center; margin-bottom: 4px; }
+.subtitle { text-align: center; color: var(--muted); font-size: 11px; margin-bottom: 10px; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; justify-content: center; }
+.legend-item { display: flex; align-items: center; gap: 4px; font-size: 10px; color: var(--muted); }
+.legend-dot { width: 10px; height: 10px; border-radius: 3px; }
+.goals { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; }
+.goals-title { font-size: 13px; font-weight: 700; color: var(--accent); margin-bottom: 8px; }
+.goals-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+.goal-chip { font-size: 11px; padding: 4px 8px; border-radius: 16px; border: 1px solid var(--border); color: var(--muted); white-space: nowrap; }
+.goal-chip.met { background: rgba(102,187,106,0.15); color: var(--green); border-color: var(--green); }
+.goal-chip.over { background: rgba(239,83,80,0.15); color: var(--red); border-color: var(--red); }
+.day-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 10px; overflow: hidden; }
+.day-top { display: flex; gap: 10px; padding: 10px 12px; }
+.day-main { flex: 1; min-width: 0; }
+.day-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.day-name { font-weight: 700; font-size: 15px; color: var(--accent); }
+.sleep-badge { font-size: 10px; padding: 2px 7px; border-radius: 12px; font-weight: 600; }
+.s-good { background: rgba(102,187,106,0.2); color: var(--green); }
+.s-ok { background: rgba(255,167,38,0.2); color: var(--orange); }
+.s-bad { background: rgba(239,83,80,0.2); color: var(--red); }
+.row { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; flex-wrap: wrap; }
+.label { font-size: 11px; color: var(--muted); min-width: 45px; }
+.input-sm {
+  background: var(--bg); border: 1px solid var(--border); border-radius: 5px;
+  color: var(--text); font-size: 12px; padding: 4px 6px; width: 55px;
+  text-align: center; outline: none;
+}
+.input-sm:focus { border-color: var(--accent); }
+.computed { font-size: 10px; color: var(--orange); font-style: italic; margin-bottom: 4px; }
+.warning { font-size: 10px; color: var(--red); font-weight: 600; margin-bottom: 4px; padding: 4px 8px; background: rgba(239,83,80,0.1); border-radius: 6px; }
+.warning.tight { color: var(--orange); background: rgba(255,167,38,0.1); }
+.toggle-row { display: flex; gap: 4px; margin-bottom: 6px; flex-wrap: wrap; }
+.toggle { font-size: 10px; padding: 3px 8px; border-radius: 14px; border: 1px solid var(--border); background: transparent; color: var(--muted); cursor: pointer; }
+.toggle.on { background: rgba(79,195,247,0.2); color: var(--accent); border-color: var(--accent); }
+.blocks-label { font-size: 11px; color: var(--green); font-weight: 600; margin: 6px 0 4px; }
+.block-toggles { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
+.block-btn { font-size: 10px; padding: 4px 8px; border-radius: 14px; border: 1px solid var(--border); background: transparent; color: var(--muted); cursor: pointer; }
+.block-btn.on { border-color: var(--green); color: var(--green); background: rgba(102,187,106,0.1); }
+.day-est { font-size: 11px; color: var(--accent); margin-top: 4px; font-weight: 600; }
+.extra-row { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
+.extra-label { font-size: 10px; color: var(--muted); }
+.timeline-bar {
+  width: 36px; min-width: 36px; min-height: 220px; position: relative;
+  background: rgba(255,255,255,0.03); border-radius: 6px; overflow: hidden;
+  cursor: pointer; border: 1px solid var(--border); align-self: stretch;
+}
+.tl-block { position: absolute; left: 0; right: 0; display: flex; align-items: center; justify-content: center; font-size: 7px; color: rgba(255,255,255,0.8); overflow: hidden; }
+.tl-tick { position: absolute; left: 0; right: 0; height: 1px; background: rgba(255,255,255,0.15); z-index: 5; pointer-events: none; }
+.tl-tick-label { position: absolute; right: 2px; font-size: 7px; color: rgba(255,255,255,0.3); z-index: 5; transform: translateY(-50%); pointer-events: none; }
+.tl-overlay {
+  display: none; position: fixed; bottom: 0; left: 0; right: 0;
+  height: 50vh; background: var(--card); border-top: 2px solid var(--accent);
+  z-index: 100; overflow-y: auto; padding: 12px 16px;
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.5);
+}
+.tl-overlay.open { display: block; }
+.tl-overlay-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; position: sticky; top: 0; background: var(--card); padding-bottom: 8px; border-bottom: 1px solid var(--border); z-index: 2; }
+.tl-overlay-title { font-size: 16px; font-weight: 700; color: var(--accent); }
+.tl-close { background: var(--border); border: none; color: var(--text); width: 30px; height: 30px; border-radius: 50%; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.tl-hour-row { display: flex; align-items: stretch; min-height: 28px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+.tl-hour-label { width: 45px; font-size: 11px; color: var(--muted); padding-top: 4px; flex-shrink: 0; }
+.tl-hour-bar { flex: 1; border-radius: 4px; margin: 2px 0; display: flex; align-items: center; padding: 0 8px; font-size: 11px; color: rgba(255,255,255,0.8); }
+.summary { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 12px; margin-top: 12px; }
+.summary-title { font-size: 13px; font-weight: 700; margin-bottom: 8px; color: var(--accent); }
+.summary-row { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 3px; }
+.summary-row .val { font-weight: 700; color: var(--accent); }
+.warn { color: var(--red); }
+.btn-row { display: flex; gap: 8px; margin-top: 12px; justify-content: center; flex-wrap: wrap; }
+.btn { padding: 8px 18px; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; }
+.btn-copy { background: var(--accent); color: #000; }
+.btn-reset { background: var(--border); color: var(--text); }
+.btn-save { background: var(--green); color: #000; }
+.divider { height: 1px; background: var(--border); margin: 8px 0; }
+.saved-toast {
+  position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+  background: var(--green); color: #000; padding: 8px 20px; border-radius: 20px;
+  font-size: 13px; font-weight: 600; z-index: 200; display: none;
+}
+.saved-toast.show { display: block; }
+</style>
+</head>
+<body>
+<h1>📅 Weekly Schedule Planner</h1>
+<p class="subtitle">Tap timeline bars to expand · Changes auto-save</p>
+<div class="legend" id="legend"></div>
+<div class="goals" id="goals"></div>
+<div id="days"></div>
+<div class="summary" id="summary"></div>
+<div class="btn-row">
+  <button class="btn btn-copy" onclick="copyAll()">Copy as Text</button>
+  <button class="btn btn-reset" onclick="resetAll()">Reset to Default</button>
+</div>
+<div class="tl-overlay" id="overlay">
+  <div class="tl-overlay-header">
+    <span class="tl-overlay-title" id="overlay-title"></span>
+    <button class="tl-close" onclick="closeOverlay()">✕</button>
+  </div>
+  <div id="overlay-body"></div>
+</div>
+<div class="saved-toast" id="toast">Saved ✓</div>
+
+<script>
+const DAYS = ['Saturday','Sunday','Monday','Tuesday','Wednesday','Thursday','Friday'];
+const WORK_DUR = 8*60, PT_DUR = 4*60, GAP = 60;
+const STORAGE_KEY = 'weeklySchedule_v1';
+
+const BLOCKS = [
+  { id:'plyo-lp', label:'Plyo + LP + HT', time: 90, goal: 1 },
+  { id:'plyo-nord', label:'Plyo + Nord + CR', time: 90, goal: 1 },
+  { id:'push', label:'Push UB + Arms', time: 90, goal: 1 },
+  { id:'pull', label:'Pull UB + Arms', time: 90, goal: 1 },
+  { id:'strength', label:'Strength', time: 55, goal: 1 },
+  { id:'core', label:'Core/Mobility', time: 25, goal: 2 },
+  { id:'band', label:'Band Warm-Up', time: 15, goal: 1 },
+  { id:'vb', label:'Volleyball', time: 15, goal: 1 },
+  { id:'cardio', label:'Cardio', time: 30, goal: 5 },
+  { id:'rest', label:'Full Rest', time: 0, goal: 1 },
+];
+
+const COLORS = {
+  sleep:'#4a148c', commute:'#e65100', work:'#1565c0', gap:'#37474f',
+  pt:'#00897b', gym:'#43a047', free:'transparent'
+};
+
+const DEFAULTS = [
+  { wake:'9:00', bed:'0:00', workStart:'', workEnd:'', ptStart:'', ptEnd:'', blocks:['push','core','cardio'], gymTime:'10:00', extra:30, hasWork:false, hasPt:false },
+  { wake:'8:00', bed:'23:00', workStart:'10:00', workEnd:'18:00', ptStart:'19:00', ptEnd:'23:00', blocks:['rest'], gymTime:'', extra:30, hasWork:true, hasPt:true },
+  { wake:'6:00', bed:'0:00', workStart:'10:00', workEnd:'18:00', ptStart:'19:00', ptEnd:'23:00', blocks:['strength','band','vb','cardio'], gymTime:'7:00', extra:30, hasWork:true, hasPt:true },
+  { wake:'8:00', bed:'0:00', workStart:'10:00', workEnd:'18:00', ptStart:'19:00', ptEnd:'23:00', blocks:['cardio'], gymTime:'8:00', extra:30, hasWork:true, hasPt:true },
+  { wake:'7:00', bed:'0:00', workStart:'12:00', workEnd:'16:00', ptStart:'17:00', ptEnd:'21:00', blocks:['plyo-lp','pull'], gymTime:'8:00', extra:30, hasWork:true, hasPt:true },
+  { wake:'8:00', bed:'0:00', workStart:'10:00', workEnd:'18:00', ptStart:'19:00', ptEnd:'23:00', blocks:['cardio','core'], gymTime:'8:00', extra:30, hasWork:true, hasPt:true },
+  { wake:'9:00', bed:'0:00', workStart:'', workEnd:'', ptStart:'', ptEnd:'', blocks:['plyo-nord','cardio'], gymTime:'10:00', extra:30, hasWork:false, hasPt:false },
+];
+
+function loadState() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) return JSON.parse(saved);
+  } catch(e) {}
+  return DEFAULTS.map(d => ({...d, blocks:[...d.blocks]}));
+}
+function saveState() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e) {}
+}
+function showToast() {
+  const t = document.getElementById('toast');
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 1200);
+}
+
+let state = loadState();
+
+function timeToMin(t) {
+  if (!t) return null;
+  t = String(t).trim();
+  if (!t.includes(':')) { const n=parseInt(t); return (isNaN(n)||n<0||n>23)?null:n*60; }
+  const [h,m] = t.split(':').map(Number);
+  return isNaN(h)?null:h*60+(m||0);
+}
+function minToTime(m) {
+  if (m==null||isNaN(m)) return '';
+  const t=((m%1440)+1440)%1440;
+  return `${Math.floor(t/60)}:${(t%60)<10?'0':''}${t%60}`;
+}
+function calcSleep(bed, wake) {
+  let b=timeToMin(bed), w=timeToMin(wake);
+  if (b==null||w==null) return null;
+  return (b>=w ? 1440-b+w : w-b) / 60;
+}
+function sleepCls(h) { return h>=7.5?'s-good':h>=6.5?'s-ok':'s-bad'; }
+function fmtDur(m) { const h=Math.floor(m/60),mn=m%60; return h>0?(mn>0?`${h}h ${mn}m`:`${h}h`):`${mn}m`; }
+
+// Legend
+document.getElementById('legend').innerHTML = [
+  ['Sleep',COLORS.sleep],['Commute',COLORS.commute],['Work',COLORS.work],
+  ['Gap',COLORS.gap],['PT',COLORS.pt],['Gym',COLORS.gym],['Free','rgba(255,255,255,0.05)']
+].map(([l,c])=>`<div class="legend-item"><div class="legend-dot" style="background:${c}"></div>${l}</div>`).join('');
+
+// Build cards
+const container = document.getElementById('days');
+DAYS.forEach((name, i) => {
+  const d = state[i];
+  const blockBtns = BLOCKS.map(b =>
+    `<button class="block-btn ${d.blocks.includes(b.id)?'on':''}" data-bid="${b.id}" onclick="togBlock(${i},'${b.id}')">${b.label}</button>`
+  ).join('');
+  const needsGym = d.blocks.some(b => b !== 'rest');
+
+  const card = document.createElement('div');
+  card.className = 'day-card';
+  card.innerHTML = `
+    <div class="day-top">
+      <div class="day-main">
+        <div class="day-header">
+          <span class="day-name">${name}</span>
+          <span class="sleep-badge" id="sleep-${i}"></span>
+        </div>
+        <div class="row">
+          <span class="label">Wake</span>
+          <input class="input-sm" type="text" placeholder="7:00" value="${d.wake}" id="wake-${i}" oninput="sync(${i})">
+          <span class="label" style="min-width:auto">Bed</span>
+          <input class="input-sm" type="text" placeholder="0:00" value="${d.bed}" id="bed-${i}" oninput="sync(${i})">
+        </div>
+        <div class="toggle-row">
+          <button class="toggle ${d.hasWork?'on':''}" id="work-tog-${i}" onclick="togWork(${i})">Work</button>
+          <button class="toggle ${d.hasPt?'on':''}" id="pt-tog-${i}" onclick="togPt(${i})">PT</button>
+        </div>
+        <div id="work-sec-${i}" style="display:${d.hasWork?'block':'none'}">
+          <div class="row">
+            <span class="label">Work</span>
+            <input class="input-sm" type="text" placeholder="10:00" value="${d.workStart}" id="ws-${i}" oninput="autoFill(${i})">
+            <span style="color:var(--muted);font-size:11px">→</span>
+            <input class="input-sm" type="text" value="${d.workEnd}" id="we-${i}" oninput="sync(${i})">
+          </div>
+          <div class="computed" id="commute-${i}"></div>
+        </div>
+        <div id="pt-sec-${i}" style="display:${d.hasPt?'block':'none'}">
+          <div class="row">
+            <span class="label">PT</span>
+            <input class="input-sm" type="text" value="${d.ptStart}" id="ps-${i}" oninput="sync(${i})">
+            <span style="color:var(--muted);font-size:11px">→</span>
+            <input class="input-sm" type="text" value="${d.ptEnd}" id="pe-${i}" oninput="sync(${i})">
+          </div>
+          <div class="computed" id="home-${i}"></div>
+        </div>
+        <div class="blocks-label">Session blocks:</div>
+        <div class="block-toggles" id="btns-${i}">${blockBtns}</div>
+        <div class="row" id="gym-row-${i}" style="display:${needsGym?'flex':'none'}">
+          <span class="label">Gym at</span>
+          <input class="input-sm" type="text" placeholder="7:30" value="${d.gymTime}" id="gym-${i}" oninput="sync(${i})">
+        </div>
+        <div id="conflict-${i}"></div>
+        <div class="extra-row">
+          <span class="extra-label">Extra (shower etc.)</span>
+          <input class="input-sm" type="text" value="${d.extra}" id="extra-${i}" style="width:40px" oninput="sync(${i})">
+          <span class="extra-label">min</span>
+        </div>
+        <div class="day-est" id="est-${i}"></div>
+      </div>
+      <div class="timeline-bar" id="tl-${i}" onclick="openOverlay(${i})"></div>
+    </div>
+  `;
+  container.appendChild(card);
+});
+
+function val(id) { return document.getElementById(id)?.value?.trim()||''; }
+function isOn(id) { return document.getElementById(id)?.classList.contains('on'); }
+function setVal(id,v) { const el=document.getElementById(id); if(el) el.value=v; }
+
+function syncState(i) {
+  state[i].wake = val(`wake-${i}`);
+  state[i].bed = val(`bed-${i}`);
+  state[i].workStart = val(`ws-${i}`);
+  state[i].workEnd = val(`we-${i}`);
+  state[i].ptStart = val(`ps-${i}`);
+  state[i].ptEnd = val(`pe-${i}`);
+  state[i].gymTime = val(`gym-${i}`);
+  state[i].extra = parseInt(val(`extra-${i}`))||30;
+  state[i].hasWork = isOn(`work-tog-${i}`);
+  state[i].hasPt = isOn(`pt-tog-${i}`);
+}
+
+function togWork(i) {
+  document.getElementById(`work-tog-${i}`).classList.toggle('on');
+  const on = isOn(`work-tog-${i}`);
+  document.getElementById(`work-sec-${i}`).style.display = on?'block':'none';
+  syncState(i); saveState(); render();
+}
+function togPt(i) {
+  document.getElementById(`pt-tog-${i}`).classList.toggle('on');
+  const on = isOn(`pt-tog-${i}`);
+  document.getElementById(`pt-sec-${i}`).style.display = on?'block':'none';
+  syncState(i); saveState(); render();
+}
+function togBlock(i, bid) {
+  const s = state[i];
+  const idx = s.blocks.indexOf(bid);
+  if (idx >= 0) s.blocks.splice(idx,1); else s.blocks.push(bid);
+  document.querySelectorAll(`#btns-${i} .block-btn`).forEach(btn => {
+    btn.classList.toggle('on', s.blocks.includes(btn.dataset.bid));
+  });
+  document.getElementById(`gym-row-${i}`).style.display = s.blocks.some(b=>b!=='rest')?'flex':'none';
+  saveState(); render();
+}
+function autoFill(i) {
+  const ws = timeToMin(val(`ws-${i}`));
+  if (ws==null) return;
+  setVal(`we-${i}`, minToTime(ws+WORK_DUR));
+  if (isOn(`pt-tog-${i}`)) {
+    setVal(`ps-${i}`, minToTime(ws+WORK_DUR+GAP));
+    setVal(`pe-${i}`, minToTime(ws+WORK_DUR+GAP+PT_DUR));
+  }
+  sync(i);
+}
+function sync(i) { syncState(i); saveState(); render(); }
+
+function getGymTotal(i) {
+  const t = state[i].blocks.reduce((sum,bid)=>{const bl=BLOCKS.find(b=>b.id===bid);return sum+(bl?bl.time:0);},0);
+  return t > 0 ? t + (state[i].extra||0) : 0;
+}
+
+function getSegments(i) {
+  const segs = [];
+  const d = state[i];
+  const wake = timeToMin(d.wake);
+  const bed = timeToMin(d.bed);
+  const ws = d.hasWork ? timeToMin(d.workStart) : null;
+  const we = d.hasWork ? timeToMin(d.workEnd) : null;
+  const ps = d.hasPt ? timeToMin(d.ptStart) : null;
+  const pe = d.hasPt ? timeToMin(d.ptEnd) : null;
+  const gymT = timeToMin(d.gymTime);
+  const gymTotal = getGymTotal(i);
+
+  if (wake!=null && wake>0) segs.push({start:0, end:wake, color:COLORS.sleep, label:'Sleep', z:1});
+  if (gymT!=null && gymTotal>0) segs.push({start:gymT, end:gymT+gymTotal, color:COLORS.gym, label:'Gym', z:3});
+  if (ws!=null) segs.push({start:ws-30, end:ws, color:COLORS.commute, label:'→Work', z:2});
+  if (ws!=null && we!=null) segs.push({start:ws, end:we, color:COLORS.work, label:'Work', z:2});
+  if (we!=null && ps!=null && ps>we) segs.push({start:we, end:ps, color:COLORS.gap, label:'Gap', z:1});
+  if (ps!=null && pe!=null) segs.push({start:ps, end:pe, color:COLORS.pt, label:'PT', z:2});
+  if (pe!=null) segs.push({start:pe, end:Math.min(pe+15,1440), color:COLORS.commute, label:'→Home', z:2});
+  if (bed!=null && bed>0) segs.push({start:bed, end:1440, color:COLORS.sleep, label:'Sleep', z:1});
+
+  segs.sort((a,b) => a.start-b.start);
+  return segs;
+}
+
+function checkConflict(i) {
+  const d = state[i];
+  const el = document.getElementById(`conflict-${i}`);
+  if (!d.hasWork) { el.innerHTML=''; return; }
+  const gymT = timeToMin(d.gymTime);
+  const gymTotal = getGymTotal(i);
+  const ws = timeToMin(d.workStart);
+  if (gymT==null || gymTotal<=0 || ws==null) { el.innerHTML=''; return; }
+  const gymEnd = gymT + gymTotal;
+  const leaveBy = ws - 30;
+  if (gymEnd > leaveBy) {
+    el.innerHTML = `<div class="warning">⚠️ Gym ends ${minToTime(gymEnd)} — leave by ${minToTime(leaveBy)}. ${gymEnd-leaveBy} min late!</div>`;
+  } else if (leaveBy - gymEnd < 15) {
+    el.innerHTML = `<div class="warning tight">⚠️ Only ${leaveBy-gymEnd} min between gym and leaving</div>`;
+  } else { el.innerHTML=''; }
+}
+
+function renderTimeline(i) {
+  const bar = document.getElementById(`tl-${i}`);
+  const segs = getSegments(i);
+  let html = '';
+  [0,6,12,18].forEach(hr => {
+    const pct=(hr/24)*100;
+    html += `<div class="tl-tick" style="top:${pct}%"></div><div class="tl-tick-label" style="top:${pct}%">${hr}</div>`;
+  });
+  segs.forEach(s => {
+    const top = (Math.max(0,s.start)/1440)*100;
+    const height = ((Math.min(1440,s.end)-Math.max(0,s.start))/1440)*100;
+    if (height<=0) return;
+    html += `<div class="tl-block" style="top:${top}%;height:${height}%;background:${s.color};z-index:${s.z||1}">${height>3?s.label:''}</div>`;
+  });
+  bar.innerHTML = html;
+}
+
+function render() {
+  DAYS.forEach((name, i) => {
+    const d = state[i];
+    const prevI = (i-1+7)%7;
+    const hrs = calcSleep(state[prevI].bed, d.wake);
+    const badge = document.getElementById(`sleep-${i}`);
+    if (hrs!=null) { badge.textContent=hrs.toFixed(1)+'h'; badge.className='sleep-badge '+sleepCls(hrs); }
+    else { badge.textContent=''; badge.className='sleep-badge'; }
+    if (d.hasWork) {
+      const ws=timeToMin(d.workStart);
+      document.getElementById(`commute-${i}`).textContent = ws!=null?`Leave ${minToTime(ws-30)}`:'';
+    }
+    if (d.hasPt) {
+      const pe=timeToMin(d.ptEnd);
+      document.getElementById(`home-${i}`).textContent = pe!=null?`Home ~${minToTime(pe+15)}`:'';
+    }
+    const gymTotal = getGymTotal(i);
+    document.getElementById(`est-${i}`).textContent = gymTotal>0?`Total: ~${fmtDur(gymTotal)}`:'';
+    checkConflict(i);
+    renderTimeline(i);
+  });
+  // Goals
+  const counts = {};
+  BLOCKS.forEach(b => counts[b.id]=0);
+  DAYS.forEach((_,i) => state[i].blocks.forEach(bid => { if(counts[bid]!=null) counts[bid]++; }));
+  document.getElementById('goals').innerHTML = `<div class="goals-title">Weekly Goals</div><div class="goals-grid">${
+    BLOCKS.map(b => {
+      const c=counts[b.id]||0;
+      return `<div class="goal-chip ${c>=b.goal?(c>b.goal?'over':'met'):''}">${b.label} ${c}/${b.goal}</div>`;
+    }).join('')
+  }</div>`;
+  // Summary
+  let gymDays=0,totalMin=0,sleepT=0,sleepC=0,worst=99,worstD='',short=0;
+  DAYS.forEach((name,i) => {
+    const bl = state[i].blocks.reduce((s,bid)=>{const b=BLOCKS.find(x=>x.id===bid);return s+(b?b.time:0);},0);
+    if (bl>0) { gymDays++; totalMin+=bl; }
+    const prevI=(i-1+7)%7;
+    const h=calcSleep(state[prevI].bed,state[i].wake);
+    if (h!=null) { sleepT+=h;sleepC++; if(h<worst){worst=h;worstD=DAYS[prevI]+' night';} if(h<7)short++; }
+  });
+  const avg=sleepC?(sleepT/sleepC).toFixed(1):'—';
+  document.getElementById('summary').innerHTML = `
+    <div class="summary-title">Summary</div>
+    <div class="summary-row"><span>Gym days</span><span class="val">${gymDays}</span></div>
+    <div class="summary-row"><span>Total gym</span><span class="val">${fmtDur(totalMin)}</span></div>
+    <div class="summary-row"><span>Avg sleep</span><span class="val ${parseFloat(avg)<7?'warn':''}">${avg}h</span></div>
+    <div class="summary-row"><span>Worst</span><span class="val ${worst<7?'warn':''}">${worst<99?worst.toFixed(1)+'h ('+worstD+')':'—'}</span></div>
+    <div class="summary-row"><span>Nights < 7h</span><span class="val ${short>2?'warn':''}">${short}</span></div>
+  `;
+}
+
+function openOverlay(i) {
+  document.getElementById('overlay-title').textContent = DAYS[i];
+  const segs = getSegments(i);
+  let html = '';
+  for (let hr=0; hr<24; hr++) {
+    const m = hr*60;
+    const covering = segs.filter(s => m<s.end && m+60>s.start);
+    const best = covering.length>0 ? (covering.find(s=>s.z===3)||covering.reduce((a,b)=>a.z>b.z?a:b)) : null;
+    html += `<div class="tl-hour-row"><div class="tl-hour-label">${hr}:00</div><div class="tl-hour-bar" style="background:${best?best.color:'rgba(255,255,255,0.03)'}">${best?best.label:''}</div></div>`;
+  }
+  document.getElementById('overlay-body').innerHTML = html;
+  document.getElementById('overlay').classList.add('open');
+}
+function closeOverlay() { document.getElementById('overlay').classList.remove('open'); }
+
+function copyAll() {
+  let t = 'WEEKLY SCHEDULE\n\n';
+  DAYS.forEach((name, i) => {
+    const d = state[i];
+    const blocks = d.blocks.map(bid=>BLOCKS.find(b=>b.id===bid)?.label).filter(Boolean).join(' + ');
+    const prevI=(i-1+7)%7;
+    const hrs = calcSleep(state[prevI].bed, d.wake);
+    const gymTotal = getGymTotal(i);
+    const gymT = timeToMin(d.gymTime);
+
+    t += `${name}\n`;
+    t += `  Wake: ${d.wake} | Bed: ${d.bed}`;
+    if (hrs!=null) t += ` | Sleep: ${hrs.toFixed(1)} hrs`;
+    t += '\n';
+
+    if (d.hasWork) {
+      const ws=timeToMin(d.workStart);
+      t += `  Work: ${d.workStart} → ${d.workEnd}`;
+      if (ws!=null) t += ` (leave by ${minToTime(ws-30)})`;
+      t += '\n';
+    }
+    if (d.hasPt) {
+      const pe=timeToMin(d.ptEnd);
+      t += `  Part-time: ${d.ptStart} → ${d.ptEnd}`;
+      if (pe!=null) t += ` (home ~${minToTime(pe+15)})`;
+      t += '\n';
+    }
+    t += `  Session: ${blocks||'—'}\n`;
+    if (gymT!=null && gymTotal>0) {
+      const gymEnd = gymT + gymTotal;
+      t += `  Gym: ${d.gymTime} → ${minToTime(gymEnd)} (~${fmtDur(gymTotal)} incl. ${d.extra}min extra)\n`;
+      if (d.hasWork) {
+        const ws=timeToMin(d.workStart);
+        if (ws!=null) {
+          const leaveBy=ws-30;
+          if (gymEnd>leaveBy) t += `  ⚠️ CONFLICT: Gym ends ${minToTime(gymEnd)}, leave by ${minToTime(leaveBy)} — ${gymEnd-leaveBy} min late!\n`;
+          else t += `  Buffer before work: ${leaveBy-gymEnd} min\n`;
+        }
+      }
+    }
+    t += '\n';
+  });
+
+  let gymDays=0,totalMin=0,sleepT=0,sleepC=0,worst=99,worstD='',short=0;
+  DAYS.forEach((name,i) => {
+    const bl=state[i].blocks.reduce((s,bid)=>{const b=BLOCKS.find(x=>x.id===bid);return s+(b?b.time:0);},0);
+    if (bl>0){gymDays++;totalMin+=bl;}
+    const prevI=(i-1+7)%7;
+    const h=calcSleep(state[prevI].bed,state[i].wake);
+    if(h!=null){sleepT+=h;sleepC++;if(h<worst){worst=h;worstD=DAYS[prevI]+' night';}if(h<7)short++;}
+  });
+  const avg=sleepC?(sleepT/sleepC).toFixed(1):'—';
+  t += '--- SUMMARY ---\n';
+  t += `Gym days: ${gymDays}\nTotal gym time: ${fmtDur(totalMin)}\n`;
+  t += `Avg sleep: ${avg} hrs\nWorst night: ${worst<99?worst.toFixed(1)+' hrs ('+worstD+')':'—'}\n`;
+  t += `Nights under 7h: ${short}\n\n`;
+
+  const counts={};
+  BLOCKS.forEach(b=>counts[b.id]=0);
+  DAYS.forEach((_,i)=>state[i].blocks.forEach(bid=>{if(counts[bid]!=null)counts[bid]++;}));
+  t += '--- GOALS ---\n';
+  BLOCKS.forEach(b => { const c=counts[b.id]||0; t += `${c>=b.goal?'✓':'✗'} ${b.label}: ${c}/${b.goal}\n`; });
+
+  navigator.clipboard&&navigator.clipboard.writeText(t).then(()=>{
+    const b=document.querySelector('.btn-copy');
+    b.textContent='Copied!'; setTimeout(()=>b.textContent='Copy as Text',1500);
+  });
+}
+
+function resetAll() {
+  if (!confirm('Reset everything to defaults?')) return;
+  state = DEFAULTS.map(d=>({...d,blocks:[...d.blocks]}));
+  localStorage.removeItem(STORAGE_KEY);
+  location.reload();
+}
+
+render();
+</script>
+</body>
+</html>
